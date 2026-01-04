@@ -22,8 +22,15 @@ COMMAND_DAMAGE = 'd'
 COMMAND_HEAL = 'h'
 COMMAND_PHASE_SHIFT = 'r'
 
+COMMAND_OVERWRITE = 'o'
+
 CONFIRM_YES = 'Y'
 CONFIRM_NO = 'N'
+
+OVERWRITE_MAX_HEALTH = 'H'
+OVERWRITE_HEALTH = 'h'
+OVERWRITE_PHASE = 'p'
+OVERWRITE_INITIATIVE = 'i'
 
 def main():
     welcome()
@@ -33,10 +40,10 @@ def main():
     command_help()
 
     command = COMMAND_INITIAL
-    while command != COMMAND_QUIT:
+    while (command != COMMAND_QUIT):
         try:
             main_command_loop(character_list)
-        except command_abort:
+        except (command_abort):
             print("COMMAND ABORTED")
             command_global_summary(character_list)
             print()
@@ -72,6 +79,8 @@ def main_command_loop(character_list):
         command_heal(character_list)
     elif (command == COMMAND_PHASE_SHIFT):
         command_phase_shift(character_list)
+    elif (command == COMMAND_OVERWRITE):
+        command_overwrite(character_list)
     
     print()
 
@@ -94,7 +103,67 @@ def command_help():
     print(f"'{COMMAND_DAMAGE}' - Damage a character.")
     print(f"'{COMMAND_HEAL}' - Heal a character.")
     print(f"'{COMMAND_PHASE_SHIFT}' - Rotate a character's phase shift.")
+    print()
+    print(f"'{COMMAND_OVERWRITE}' - Overwrite a certain stat.")
+    
+# Override a certain stat
+def command_overwrite(character_list):
+    print("--OVERWRITE--")
+    character = get_character(character_list)
+    print("What would you like to overwrite?")
+    print(f"'{OVERWRITE_MAX_HEALTH}' - Max health")
+    print(f"'{OVERWRITE_HEALTH}' - Health")
+    print(f"'{OVERWRITE_PHASE}' - Phase")
+    print(f"'{OVERWRITE_INITIATIVE}' - Initiative")
+    
+    is_command_given = False
+    while (not is_command_given):
+        command = input()
+        input_abort(command)
+        
+        is_command_given = True        
+        if (command == OVERWRITE_MAX_HEALTH):
+            overwrite_max_health(character)
+        elif (command == OVERWRITE_HEALTH):
+            overwrite_health(character)
+        elif (command == OVERWRITE_PHASE):
+            overwrite_phase(character)
+        elif (command == OVERWRITE_INITIATIVE):
+            overwrite_initiative(character)
+        else:
+            print("Enter one of the commands.")
+            print(f"'{OVERWRITE_MAX_HEALTH}' - Max health")
+            print(f"'{OVERWRITE_HEALTH}' - Health")
+            print(f"'{OVERWRITE_PHASE}' - Phase")
+            print(f"'{OVERWRITE_INITIATIVE}' - Initiative")
+            is_command_given = False
 
+def overwrite_max_health(character):
+    new = scan_positive_nonzero_integer("Enter new max hp:")
+    character.max_health = new
+    character.clamp_health()
+    print("Max health overwritten.")
+    
+def overwrite_health(character):
+    new = scan_positive_nonzero_integer("Enter new hp:")
+    arg = cmath.phase(character.health)
+    character.health = cmath.rect(new, arg)
+    character.clamp_health()
+    print("Health overwritten.")
+    
+def overwrite_phase(character):
+    new = scan_argument("Enter new phase shift (degrees):")
+    
+    new = deg_to_rad(difference)
+    difference = new - character.phase
+    character.shift_phase(difference)
+    print("Phase overwritten.")
+    
+def overwrite_initiative(character):
+    new = scan_positive_nonzero_integer("Enter new initiative:")
+    character.initiative = new
+    print("Initiative overwritten.")
+    
 def command_phase_shift(character_list):
     character = get_character(character_list)
     arg = scan_argument("Enter phase shift argument (degrees)")
@@ -155,9 +224,11 @@ def command_show_graph(character_list):
 def command_add(character_list):
     print("--ADD CHARACTER--")
     name = scan_name(character_list)
-    max_hitpoints = scan_positive_nonzero_integer("Enter max hitpoints.")
-
-    character_list.append(character(max_hitpoints, name))
+    max_hitpoints = scan_positive_nonzero_integer("Enter max hitpoints:")
+    
+    initiative = scan_positive_nonzero_integer("Enter initiative:")
+        
+    character_list.append(character(max_hitpoints, initiative, name))
     print(f"{name} added!")
 
 def scan_name(character_list):
@@ -179,10 +250,9 @@ def scan_name(character_list):
     print("Something went wrong in scan_name!!!")
     return None
 
-
-
 def command_global_summary(character_list):
     print("----GLOBAL SUMMARY----")
+    sort_by_initiative(character_list)
     for character in character_list:
 
         lower, upper = character.get_danger_arg()
@@ -190,6 +260,7 @@ def command_global_summary(character_list):
         upper = round(rad_to_deg(upper), 2)
 
         print(f"Summary for {character.name}")
+        print(f"Initiative: {character.initiative}")
         print(f"Phase shift: {rad_to_deg(character.phase)}")
         print(f"Danger argument = {lower} <= DEATH <= {upper}")
         print(f"Polar health: {round(abs(character.health), 2)}∠{round(positive_principle_arg(rad_to_deg(cmath.phase(character.health))), 2)}")
@@ -204,6 +275,7 @@ def command_local_summary(character_list):
     upper = round(rad_to_deg(upper), 2)
     print(f"Summary for {character.name}")
     print(f"Hitpoints: {round_complex(character.health)}")
+    print(f"Initiative: {character.initiative}")
     print(f"Hitpoint value: {round(abs(character.health), 2)}/{character.max_health}")
     print(f"Phase shift: {round(rad_to_deg(character.phase), 2)}")
     print(f"Danger argument = {lower} <= DEATH <= {upper}")
@@ -234,11 +306,12 @@ def input_abort(command):
         raise command_abort()
     
 class character:
-    def __init__(self, health, name):
+    def __init__(self, health, initiative, name):
         self.health = complex(health, 0)
         self.name = name
         self.phase = float(0)
         self.max_health = health
+        self.initiative = initiative
 
     def clamp_health(self):
         arg = cmath.phase(self.health)
@@ -335,6 +408,23 @@ def get_character(character_list) -> character:
                 found = True
                 return character
         print(f"Character named '{name}' not found")
+        
+def sort_by_initiative(character_list):
+    sorted = False
+    while (not sorted):
+        sorted = True
+        for i in range(0, len(character_list)):
+            for j in range(i, len(character_list)):
+                if (character_list[i].initiative < character_list[j].initiative):
+                    swap_characters(character_list, i, j)
+                    sorted = False
+                
+
+def swap_characters(character_list, index1, index2):
+    temp = character_list[index1]
+    character_list[index1] = character_list[index2]
+    character_list[index2] = temp
+    
 
 def deg_to_rad(arg):
     new = arg * math.pi / 180
