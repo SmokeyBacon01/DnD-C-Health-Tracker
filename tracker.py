@@ -5,9 +5,6 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import tkinter as tk
-import threading
-import time
-
 
 COMMAND_INITIAL = '\0'
 
@@ -36,14 +33,34 @@ OVERWRITE_HEALTH = 'h'
 OVERWRITE_PHASE = 'p'
 OVERWRITE_INITIATIVE = 'i'
 
+
+font = ("Courier", 12)
+rows = 6
+
 root = tk.Tk()
-root.title("Test")
+root.title("Tracker")
 
-label_var = tk.StringVar()
-label_var.set("Waiting for data...")
+frame = tk.Frame(root)
+frame.pack(padx = 10, pady = 10)
 
-label = tk.Label(root, textvariable = label_var, justify = "left", font = ("Consolas", 11))
-label.pack(padx = 20, pady = 20)
+def update_draw_tk(character_list):
+    for i, character in enumerate(character_list):
+        row = i % rows
+        col = i // rows
+        string = get_summary(character)
+        label = tk.Label(frame, text = string, justify = "left", anchor = "nw", font = font, borderwidth = 1, relief = "solid", padx = 5, pady = 3)
+        label.grid(row = row, column = col, sticky="nw", padx = 5, pady = 5)
+
+def get_summary(character):
+    string = ""
+    name = f"Name: {character.name}\n"
+    phase = f"Phase: {show_arg(character.phase)}\n"
+    health = f"Health Phase: {show_arg(cmath.phase(character.health))}\n"
+    string += name
+    if (character.is_dead()):
+        string += "-DEAD-\n"
+    string += phase + health
+    return string
 
 def main():
     welcome()
@@ -57,6 +74,7 @@ def main():
     num = 0
     while (command != COMMAND_QUIT):
         try:
+            sort_by_initiative(character_list)
             main_command_loop(character_list)
             sort_by_initiative(character_list)
         except (command_abort):
@@ -64,34 +82,15 @@ def main():
             print("PRINTING GLOBAL SUMMARY, REMEMBER VALUES IF YOU NEED TO RESET")
             command_global_summary(character_list)
             print()
-
-def update_window(character_list):
-    full = ""
-    for character in character_list:
-        header = "---------------"
-        name = f"Name: {character.name}"
-        initiative = f"Initiative: {character.initiative}"
-        health_mod = round(abs(character.health), 2)
-        health_arg = round(rad_to_deg(cmath.phase(character.health)), 2)
-        polar_health = f"Polar health: {health_mod}∠{health_arg}"
-        phase = f"Phase: {rad_to_deg(character.phase)}"
-        newline = "\n"
-        
-        lower, upper = character.get_danger_arg()
-        lower = round(rad_to_deg(lower), 2)
-        upper = round(rad_to_deg(upper), 2)
-        
-        danger = f"Danger argument: {lower} <= DEATH <= {upper}"
-        
-        full = full + header + newline + name + newline + initiative + newline + phase +  newline + polar_health + newline + danger + newline
-    label_var.set(full)
         
         
 
 def welcome():
     print("Welcome to Character Tracker!")
-    print("This program supports tracking multiple characters at once, but it is advised for screen sharers")
+    print("This program supports tracking multiple characters at once, but it is advised for device sharers")
     print("to track their own characters on seperate screens")
+    print("Currently, death detector doesnt work. I fucking hate periodic functions :thumbs_up:")
+    print("Just eyeball it with summaries and the graph for now while I try to fix it, it is currently 2 AM and I am 110 done with this shit.")
     print()
     print("Enter anything to continue...")
     input()
@@ -124,9 +123,7 @@ def main_command_loop(character_list):
     elif (command == COMMAND_REMOVE):
         command_remove(character_list)
     
-    print()
-    
-    update_window(character_list)
+    update_draw_tk(character_list)
 
 def command_help():
     print("--HELP MENU--")
@@ -291,7 +288,7 @@ def scan_name(character_list):
         is_name_unique = True
         for character in character_list:
             if (character.name == name):
-                print(F"{name} is already taken!")
+                print(f"{name} is already taken!")
                 is_name_unique = False
                 break
         
@@ -310,6 +307,8 @@ def command_global_summary(character_list):
         upper = round(rad_to_deg(upper), 2)
 
         print(f"Summary for {character.name}")
+        if (character.is_dead()):
+            print("-DEAD-")
         print(f"Initiative: {character.initiative}")
         print(f"Phase shift: {rad_to_deg(character.phase)}")
         print(f"Danger argument: {lower} <= DEATH <= {upper}")
@@ -324,6 +323,8 @@ def command_local_summary(character_list):
     lower = round(rad_to_deg(lower), 2)
     upper = round(rad_to_deg(upper), 2)
     print(f"Summary for {character.name}")
+    if (character.is_dead()):
+        print("-DEAD-")
     print(f"Hitpoints: {round_complex(character.health)}")
     print(f"Initiative: {character.initiative}")
     print(f"Hitpoint value: {round(abs(character.health), 2)}/{character.max_health}")
@@ -397,6 +398,19 @@ class character:
         self.phase += shift_argument
         self.clamp_argument()
 
+    def is_dead(self):
+        if (abs(self.health) == 0):
+            self.health = complex(0, 0)
+            return True
+
+        lower, upper = self.get_danger_arg()
+        arg = positive_principle_arg(cmath.phase(self.health))
+        if (arg >= lower and arg <= upper):
+            self.health = complex(0, 0)
+            return True
+        else:
+            return False
+
     def get_danger_arg(self):
         arg1 = self.phase + math.pi / 2
         arg2 = self.phase - math.pi / 2
@@ -407,10 +421,7 @@ class character:
         if (arg2 < 0):
             arg2 += 2 * math.pi
         
-        if (arg1 > arg2):
-            return arg2, arg1
-        else:
-            return arg1, arg2
+        return arg2, arg1
     
     def print_graph(self):
         plt.axhline(0, color = 'black', linewidth = 1)
@@ -427,7 +438,7 @@ class character:
         plt.plot(x_line, y_line, color = 'gray', label = 'Phase')
 
         fill_around_argument = self.phase + math.pi
-        theta_sector = np.linspace(fill_around_argument - (1/2 * math.pi), fill_around_argument + (1/2 * math.pi), 100)
+        theta_sector = np.linspace(fill_around_argument - (1 / 2 * math.pi), fill_around_argument + (1 / 2 * math.pi), 100)
         x_sector = self.max_health * np.cos(theta_sector)
         y_sector = self.max_health * np.sin(theta_sector)
         x_fill = np.concatenate([[0], x_sector])
@@ -500,6 +511,10 @@ def round_complex(z):
 class command_abort(Exception):
     pass
 
+def show_arg(arg_in_rad):
+    return round(rad_to_deg(arg_in_rad), 2)
+
 if (__name__ == "__main__"):
     main()
-        
+
+    
