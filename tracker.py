@@ -55,10 +55,13 @@ def get_summary(character):
     string = ""
     name = f"Name: {character.name}\n"
     phase = f"Phase: {show_arg(character.phase)}\n"
-    health = f"Health Phase: {show_arg(cmath.phase(character.health))}\n"
+    
+    health_arg = show_arg(cmath.phase(character.health))
+    if (health_arg < 0):
+        health_arg += 360
+    
+    health = f"Health Phase: {health_arg}\n"
     string += name
-    if (character.is_dead()):
-        string += "-DEAD-\n"
     string += phase + health
     return string
 
@@ -307,8 +310,6 @@ def command_global_summary(character_list):
         upper = round(rad_to_deg(upper), 2)
 
         print(f"Summary for {character.name}")
-        if (character.is_dead()):
-            print("-DEAD-")
         print(f"Initiative: {character.initiative}")
         print(f"Phase shift: {rad_to_deg(character.phase)}")
         print(f"Danger argument: {lower} <= DEATH <= {upper}")
@@ -323,8 +324,6 @@ def command_local_summary(character_list):
     lower = round(rad_to_deg(lower), 2)
     upper = round(rad_to_deg(upper), 2)
     print(f"Summary for {character.name}")
-    if (character.is_dead()):
-        print("-DEAD-")
     print(f"Hitpoints: {round_complex(character.health)}")
     print(f"Initiative: {character.initiative}")
     print(f"Hitpoint value: {round(abs(character.health), 2)}/{character.max_health}")
