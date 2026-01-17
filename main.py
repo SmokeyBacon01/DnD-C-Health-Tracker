@@ -68,13 +68,12 @@ def get_summary(character):
 def main():
     welcome()
 
-    character_list: list[character] = []
+    character_list: list[Character] = []
 
     command_help()
     
     command = COMMAND_INITIAL
     
-    num = 0
     while (command != COMMAND_QUIT):
         try:
             sort_by_initiative(character_list)
@@ -86,8 +85,6 @@ def main():
             command_global_summary(character_list)
             print()
         
-        
-
 def welcome():
     print("Welcome to Character Tracker!")
     print("This program supports tracking multiple characters at once, but it is advised for device sharers")
@@ -128,7 +125,7 @@ def main_command_loop(character_list):
     
     update_draw_tk(character_list)
 
-def command_help():
+def command_help() -> None:
     print("--HELP MENU--")
     print("Character tracker is used for health in the complex domain.")
     print("Enter arguments one line at a time.")
@@ -152,15 +149,15 @@ def command_help():
     print(f"'{COMMAND_OVERWRITE}' - Overwrite a certain stat.")
     
     
-def command_remove(character_list):
-    character = get_character(character_list)
+def command_remove(character_list) -> None:
+    character = scan_character(character_list)
     character_list.remove(character)
     print(f"Removed {character.name}.")
 
 # Override a certain stat
-def command_overwrite(character_list):
+def command_overwrite(character_list) -> None:
     print("--OVERWRITE--")
-    character = get_character(character_list)
+    character = scan_character(character_list)
     print("What would you like to overwrite?")
     print(f"'{OVERWRITE_MAX_HEALTH}' - Max health")
     print(f"'{OVERWRITE_HEALTH}' - Health")
@@ -189,20 +186,20 @@ def command_overwrite(character_list):
             print(f"'{OVERWRITE_INITIATIVE}' - Initiative")
             is_command_given = False
 
-def overwrite_max_health(character):
+def overwrite_max_health(character) -> None:
     new = scan_positive_nonzero_integer("Enter new max hp:")
     character.max_health = new
     character.clamp_health()
     print("Max health overwritten.")
     
-def overwrite_health(character):
+def overwrite_health(character) -> None:
     new = scan_positive_nonzero_integer("Enter new hp:")
     arg = cmath.phase(character.health)
     character.health = cmath.rect(new, arg)
     character.clamp_health()
     print("Health overwritten.")
     
-def overwrite_phase(character):
+def overwrite_phase(character) -> None:
     new = scan_argument("Enter new phase shift (degrees):")
     
     new = deg_to_rad(difference)
@@ -210,28 +207,28 @@ def overwrite_phase(character):
     character.shift_phase(difference)
     print("Phase overwritten.")
     
-def overwrite_initiative(character):
+def overwrite_initiative(character) -> None:
     new = scan_positive_nonzero_integer("Enter new initiative:")
     character.initiative = new
     print("Initiative overwritten.")
 
-def command_phase_shift(character_list):
-    character = get_character(character_list)
+def command_phase_shift(character_list) -> None:
+    character = scan_character(character_list)
     arg = scan_argument("Enter phase shift argument (degrees)")
 
     character.shift_phase(deg_to_rad(arg))
     print(f"{character.name}'s phase shifted by {arg}")
 
-def command_heal(character_list):
-    character = get_character(character_list)
+def command_heal(character_list) -> None:
+    character = scan_character(character_list)
     heal_mod = scan_positive_nonzero_integer("Enter value of healing received")
     heal_arg = deg_to_rad(scan_argument("Enter argument of healing received (degrees)"))
     heal = cmath.rect(heal_mod, heal_arg)
 
     character.take_heal(heal)
 
-def command_damage(character_list):
-    character = get_character(character_list)
+def command_damage(character_list) -> None:
+    character = scan_character(character_list)
     damage_mod = scan_positive_nonzero_integer("Enter value of damage taken")
     damage_arg = deg_to_rad(scan_argument("Enter argument of damage taken (degrees)"))
     damage = cmath.rect(damage_mod, damage_arg)
@@ -266,23 +263,23 @@ def scan_positive_nonzero_integer(print_prompt) -> int:
         else:
             return number
 
-def command_show_graph(character_list):
-    character = get_character(character_list)
+def command_show_graph(character_list) -> None:
+    character = scan_character(character_list)
     print("Showing graph...")
     character.print_graph()
     print("Graph closed.")
 
-def command_add(character_list):
+def command_add(character_list) -> None:
     print("--ADD CHARACTER--")
     name = scan_name(character_list)
     max_hitpoints = scan_positive_nonzero_integer("Enter max hitpoints:")
     
     initiative = scan_positive_nonzero_integer("Enter initiative:")
         
-    character_list.append(character(max_hitpoints, initiative, name))
+    character_list.append(Character(max_hitpoints, initiative, name))
     print(f"{name} added!")
 
-def scan_name(character_list):
+def scan_name(character_list) -> None:
     while (1):
         print("Enter name:")
         name = input()
@@ -301,7 +298,7 @@ def scan_name(character_list):
     print("Something went wrong in scan_name!!!")
     return None
 
-def command_global_summary(character_list):
+def command_global_summary(character_list) -> None:
     print("----GLOBAL SUMMARY----")
     for character in character_list:
 
@@ -313,25 +310,28 @@ def command_global_summary(character_list):
         print(f"Initiative: {character.initiative}")
         print(f"Phase shift: {rad_to_deg(character.phase)}")
         print(f"Danger argument: {lower} <= DEATH <= {upper}")
-        print(f"Polar health: {round(abs(character.health), 2)}∠{round(positive_principle_arg(rad_to_deg(cmath.phase(character.health))), 2)}")
+        print(f"Polar health: {round(abs(character.health), 2)}∠{round(rad_to_deg(positive_principle_arg(cmath.phase(character.health))), 2)}")
         print("----------------------")
 
-def command_local_summary(character_list):
+def command_local_summary(character_list) -> None:
     print("--LOCAL SUMMARY--")
-    character = get_character(character_list)
+    character = scan_character(character_list)
 
     lower, upper = character.get_danger_arg()
     lower = round(rad_to_deg(lower), 2)
     upper = round(rad_to_deg(upper), 2)
+
+    if (character.is_dead()):
+        print("--DEAD--")
     print(f"Summary for {character.name}")
     print(f"Hitpoints: {round_complex(character.health)}")
     print(f"Initiative: {character.initiative}")
     print(f"Hitpoint value: {round(abs(character.health), 2)}/{character.max_health}")
     print(f"Phase shift: {round(rad_to_deg(character.phase), 2)}")
     print(f"Danger argument: {lower} <= DEATH <= {upper}")
-    print(f"Polar health: {round(abs(character.health), 2)}∠{round(positive_principle_arg(rad_to_deg(cmath.phase(character.health))), 2)}")
+    print(f"Polar health: {round(abs(character.health), 2)}∠{round(rad_to_deg(positive_principle_arg(cmath.phase(character.health))), 2)}")
 
-def command_quit():
+def command_quit() -> None:
     command = COMMAND_INITIAL
     while command != CONFIRM_YES and command != CONFIRM_NO:
         print(f"Are you sure? {CONFIRM_YES}/{CONFIRM_NO}")
@@ -351,19 +351,19 @@ def command_quit():
 
     return COMMAND_INITIAL
 
-def input_abort(command):
+def input_abort(command) -> None:
     if (command == COMMAND_ABORT):
         raise command_abort()
     
-class character:
-    def __init__(self, health, initiative, name):
+class Character:
+    def __init__(self, health, initiative, name) -> None:
         self.health = complex(health, 0)
         self.name = name
         self.phase = float(0)
         self.max_health = health
         self.initiative = initiative
 
-    def clamp_health(self):
+    def clamp_health(self) -> None:
         arg = cmath.phase(self.health)
         value = abs(self.health)
 
@@ -372,17 +372,17 @@ class character:
         
         self.health = cmath.rect(value, arg)
     
-    def clamp_argument(self):
+    def clamp_argument(self) -> None:
         if (self.phase < 0):
             self.phase = 0
         elif (self.phase > 2 * math.pi):
             self.phase = 2 * math.pi
     
-    def take_damage(self, damage):
+    def take_damage(self, damage) -> None:
         self.health -= damage
         self.clamp_health()
 
-    def take_heal(self, heal):
+    def take_heal(self, heal) -> None:
         self.health += heal
         if (abs(self.health) > self.max_health):
             overheal = abs(self.health) - self.max_health
@@ -391,26 +391,31 @@ class character:
             print(f"Healed {self.name} by {heal}")
         self.clamp_health()
     
-    def shift_phase(self, shift_argument):
+    def shift_phase(self, shift_argument) -> None:
         cartesian_shift = cmath.rect(1, shift_argument)
         self.health *= cartesian_shift
         self.phase += shift_argument
         self.clamp_argument()
 
-    def is_dead(self):
+    def is_dead(self) -> bool:
         if (abs(self.health) == 0):
             self.health = complex(0, 0)
             return True
 
         lower, upper = self.get_danger_arg()
         arg = positive_principle_arg(cmath.phase(self.health))
-        if (arg >= lower and arg <= upper):
-            self.health = complex(0, 0)
-            return True
-        else:
-            return False
 
-    def get_danger_arg(self):
+        if (lower < upper):
+            if (arg > lower and arg < upper):
+                return True
+        else:
+            if (arg > lower or arg < upper):
+                return True
+
+        return False
+
+    # This returns the bounds of the death argument, where the death sector is represented by starting at arg2, moving counterclockwise until arg1.
+    def get_danger_arg(self) -> tuple[int, int]:
         arg1 = self.phase + math.pi / 2
         arg2 = self.phase - math.pi / 2
 
@@ -422,7 +427,7 @@ class character:
         
         return arg2, arg1
     
-    def print_graph(self):
+    def print_graph(self) -> None:
         plt.axhline(0, color = 'black', linewidth = 1)
         plt.axvline(0, color = 'black', linewidth = 1)
         plt.axis('off')
@@ -454,7 +459,8 @@ class character:
         print("Close graph to continue.")
         plt.show()
 
-def get_character(character_list) -> character:
+# scan a character name
+def scan_character(character_list) -> Character:
     if (len(character_list) == 1):
         return character_list[0]
     found = False
@@ -469,7 +475,7 @@ def get_character(character_list) -> character:
                 return character
         print(f"Character named '{name}' not found")
         
-def sort_by_initiative(character_list):
+def sort_by_initiative(character_list) -> None:
     sorted = False
     while (not sorted):
         sorted = True
@@ -480,21 +486,21 @@ def sort_by_initiative(character_list):
                     sorted = False
                 
 
-def swap_characters(character_list, index1, index2):
+def swap_characters(character_list, index1, index2) -> None:
     temp = character_list[index1]
     character_list[index1] = character_list[index2]
-    character_list[index2] = temp
-    
+    character_list[index2] = temp   
 
-def deg_to_rad(arg):
+def deg_to_rad(arg) -> float:
     new = arg * math.pi / 180
     return new
 
-def rad_to_deg(arg):
+def rad_to_deg(arg) -> float:
     new = arg / math.pi * 180
     return new
 
-def positive_principle_arg(arg):
+# ONLY USE ON RADIANS
+def positive_principle_arg(arg) -> float:
     new = arg
     if (new > 2 * math.pi):
         new -= 2 * math.pi
@@ -503,14 +509,15 @@ def positive_principle_arg(arg):
         new += 2 * math.pi
     return new
 
-def round_complex(z):
+def round_complex(z) -> complex:
     new = complex(round(z.real, 2), round(z.imag, 2))
     return new
 
 class command_abort(Exception):
     pass
 
-def show_arg(arg_in_rad):
+# returns degrees with 2 decimal places, for showing arguments
+def show_arg(arg_in_rad) -> float:
     return round(rad_to_deg(arg_in_rad), 2)
 
 if (__name__ == "__main__"):
